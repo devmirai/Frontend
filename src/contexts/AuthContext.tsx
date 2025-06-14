@@ -1,13 +1,13 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { message } from 'antd';
-import { userAPI } from '../services/api';
-import { Usuario, Empresa } from '../types/api';
+import { usuarioAPI, empresaAPI } from '../services/api';
+import { Usuario, Empresa, Rol } from '../types/api';
 
 export interface User {
   id: number;
   email: string;
   name: string;
-  role: 'EMPRESA' | 'USUARIO';
+  role: Rol;
   avatar?: string;
   // Additional fields based on role
   telefono?: string | number;
@@ -33,7 +33,7 @@ interface LoginCredentials {
 interface RegisterData {
   email: string;
   password: string;
-  role: 'EMPRESA' | 'USUARIO';
+  role: Rol;
   // Usuario fields
   nombre?: string;
   apellidoPaterno?: string;
@@ -114,7 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: 'LOGIN_START' });
 
     try {
-      // For demo purposes, we'll use the test credentials
+      // For demo purposes, we'll use test credentials
       // In a real implementation, you'd have a login endpoint
       await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -126,7 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           id: 1,
           email: 'empresa@demo.com',
           name: 'TechCorp',
-          role: 'EMPRESA',
+          role: Rol.EMPRESA,
           avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?w=100',
           telefono: '999999999',
           direccion: 'Av. Demo 123',
@@ -137,7 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           id: 1,
           email: 'usuario@demo.com',
           name: 'Juan Pérez Lopez',
-          role: 'USUARIO',
+          role: Rol.USUARIO,
           avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?w=100',
           apellidoPaterno: 'Pérez',
           apellidoMaterno: 'Lopez',
@@ -168,7 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       let response;
       
-      if (data.role === 'USUARIO') {
+      if (data.role === Rol.USUARIO) {
         const usuarioData: Usuario = {
           nombre: data.nombre!,
           apellidoPaterno: data.apellidoPaterno!,
@@ -177,9 +177,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           password: data.password,
           nacimiento: data.nacimiento!,
           telefono: data.telefono!,
-          rol: 'USUARIO'
+          rol: Rol.USUARIO
         };
-        response = await userAPI.createUsuario(usuarioData);
+        response = await usuarioAPI.create(usuarioData);
       } else {
         const empresaData: Empresa = {
           nombre: data.nombre!,
@@ -188,20 +188,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           telefono: data.telefono?.toString() || '',
           direccion: data.direccion!,
           descripcion: data.descripcion!,
-          rol: 'EMPRESA'
+          rol: Rol.EMPRESA
         };
-        response = await userAPI.createEmpresa(empresaData);
+        response = await empresaAPI.create(empresaData);
       }
 
       const userData = response.data;
       const user: User = {
         id: userData.id,
         email: userData.email,
-        name: data.role === 'USUARIO' 
+        name: data.role === Rol.USUARIO 
           ? `${userData.nombre} ${userData.apellidoPaterno} ${userData.apellidoMaterno}`
           : userData.nombre,
         role: data.role,
-        avatar: data.role === 'EMPRESA' 
+        avatar: data.role === Rol.EMPRESA 
           ? 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?w=100'
           : 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?w=100',
         ...userData

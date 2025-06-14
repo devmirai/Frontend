@@ -12,7 +12,6 @@ import {
   Space,
   Avatar,
   Tag,
-  Progress,
   Badge,
   Empty,
   Dropdown,
@@ -42,7 +41,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { convocatoriaAPI, postulacionAPI } from '../services/api';
-import { Convocatoria, Postulacion } from '../types/api';
+import { Convocatoria, Postulacion, EstadoPostulacion } from '../types/api';
 import dayjs from 'dayjs';
 
 const { Header, Sider, Content } = Layout;
@@ -118,15 +117,15 @@ const UserDashboard: React.FC = () => {
     },
     {
       title: 'Completed Interviews',
-      value: myApplications.filter(a => a.estado === 'COMPLETADA').length,
+      value: myApplications.filter(a => a.estado === EstadoPostulacion.COMPLETADA).length,
       icon: <CheckCircleOutlined className="text-green-600" />,
       color: 'green',
-      change: `${Math.round((myApplications.filter(a => a.estado === 'COMPLETADA').length / Math.max(myApplications.length, 1)) * 100)}% completion rate`,
+      change: `${Math.round((myApplications.filter(a => a.estado === EstadoPostulacion.COMPLETADA).length / Math.max(myApplications.length, 1)) * 100)}% completion rate`,
       trend: 'up'
     },
     {
       title: 'In Progress',
-      value: myApplications.filter(a => a.estado === 'EN_PROCESO').length,
+      value: myApplications.filter(a => a.estado === EstadoPostulacion.EN_PROCESO).length,
       icon: <ClockCircleOutlined className="text-orange-600" />,
       color: 'orange',
       change: 'Active interviews',
@@ -142,14 +141,14 @@ const UserDashboard: React.FC = () => {
     }
   ];
 
-  const getStatusTag = (status: string) => {
+  const getStatusTag = (status: EstadoPostulacion) => {
     const statusConfig = {
-      'PENDIENTE': { color: 'warning', text: 'Pending' },
-      'EN_PROCESO': { color: 'processing', text: 'In Progress' },
-      'COMPLETADA': { color: 'success', text: 'Completed' },
-      'RECHAZADA': { color: 'error', text: 'Rejected' }
+      [EstadoPostulacion.PENDIENTE]: { color: 'warning', text: 'Pending' },
+      [EstadoPostulacion.EN_PROCESO]: { color: 'processing', text: 'In Progress' },
+      [EstadoPostulacion.COMPLETADA]: { color: 'success', text: 'Completed' },
+      [EstadoPostulacion.RECHAZADA]: { color: 'error', text: 'Rejected' }
     };
-    const config = statusConfig[status as keyof typeof statusConfig];
+    const config = statusConfig[status];
     return <Tag color={config.color}>{config.text}</Tag>;
   };
 
@@ -193,7 +192,7 @@ const UserDashboard: React.FC = () => {
       title: 'Status',
       dataIndex: 'estado',
       key: 'estado',
-      render: (status: string) => getStatusTag(status),
+      render: (status: EstadoPostulacion) => getStatusTag(status),
     },
     {
       title: 'Applied Date',
@@ -208,7 +207,7 @@ const UserDashboard: React.FC = () => {
       key: 'actions',
       render: (_, record: Postulacion) => (
         <Space>
-          {record.estado === 'PENDIENTE' && (
+          {record.estado === EstadoPostulacion.PENDIENTE && (
             <Button 
               type="primary" 
               size="small" 
@@ -219,7 +218,7 @@ const UserDashboard: React.FC = () => {
               Start Interview
             </Button>
           )}
-          {record.estado === 'EN_PROCESO' && (
+          {record.estado === EstadoPostulacion.EN_PROCESO && (
             <Button 
               type="primary" 
               size="small" 
@@ -230,7 +229,7 @@ const UserDashboard: React.FC = () => {
               Continue
             </Button>
           )}
-          {record.estado === 'COMPLETADA' && (
+          {record.estado === EstadoPostulacion.COMPLETADA && (
             <Button 
               size="small" 
               icon={<EyeOutlined />}
@@ -250,10 +249,10 @@ const UserDashboard: React.FC = () => {
     setApplying(true);
     try {
       await postulacionAPI.create({
-        usuarioId: user.id,
-        convocatoriaId: selectedJob.id,
         fechaPostulacion: new Date().toISOString(),
-        estado: 'PENDIENTE'
+        estado: EstadoPostulacion.PENDIENTE,
+        usuario: { id: user.id },
+        convocatoria: { id: selectedJob.id }
       });
 
       message.success('Application submitted successfully!');
@@ -269,7 +268,7 @@ const UserDashboard: React.FC = () => {
 
   const openApplyModal = (job: Convocatoria) => {
     // Check if user already applied
-    const alreadyApplied = myApplications.some(app => app.convocatoriaId === job.id);
+    const alreadyApplied = myApplications.some(app => app.convocatoria?.id === job.id);
     if (alreadyApplied) {
       message.warning('You have already applied to this job');
       return;
@@ -295,7 +294,7 @@ const UserDashboard: React.FC = () => {
             <RobotOutlined />
           </div>
           {!collapsed && (
-            <span className="logo-text">MiraiBot</span>
+            <span className="logo-text">Mirai</span>
           )}
         </div>
 
@@ -315,7 +314,7 @@ const UserDashboard: React.FC = () => {
                 <div className="mirabot-avatar mx-auto mb-3" style={{ width: '60px', height: '60px' }}>
                   <RobotOutlined className="text-2xl text-white" />
                 </div>
-                <Title level={5} className="mb-2 text-indigo-800">MiraiBot</Title>
+                <Title level={5} className="mb-2 text-indigo-800">Mirai</Title>
                 <Paragraph className="text-indigo-600 text-sm mb-0">
                   Ready to help you succeed!
                 </Paragraph>
@@ -353,7 +352,7 @@ const UserDashboard: React.FC = () => {
               >
                 Search Jobs
               </Button>
-              <Badge count={myApplications.filter(a => a.estado === 'EN_PROCESO').length} size="small">
+              <Badge count={myApplications.filter(a => a.estado === EstadoPostulacion.EN_PROCESO).length} size="small">
                 <Button 
                   icon={<BellOutlined />}
                   className="border-gray-300 hover:border-indigo-400"
@@ -386,7 +385,7 @@ const UserDashboard: React.FC = () => {
                     Hello, {user?.name}! 👋
                   </Title>
                   <Paragraph className="text-gray-600 text-lg mb-4">
-                    You have <strong>{myApplications.filter(a => a.estado === 'EN_PROCESO').length} interviews</strong> in progress and <strong>{availableJobs.length} new job opportunities</strong> available.
+                    You have <strong>{myApplications.filter(a => a.estado === EstadoPostulacion.EN_PROCESO).length} interviews</strong> in progress and <strong>{availableJobs.length} new job opportunities</strong> available.
                   </Paragraph>
                   <Space>
                     <Button type="primary" className="btn-gradient">
@@ -479,7 +478,7 @@ const UserDashboard: React.FC = () => {
               {availableJobs.length > 0 ? (
                 <Row gutter={[24, 24]}>
                   {availableJobs.slice(0, 4).map((job) => {
-                    const alreadyApplied = myApplications.some(app => app.convocatoriaId === job.id);
+                    const alreadyApplied = myApplications.some(app => app.convocatoria?.id === job.id);
                     return (
                       <Col xs={24} lg={12} key={job.id}>
                         <Card className="hover-card border border-gray-200">
@@ -490,13 +489,6 @@ const UserDashboard: React.FC = () => {
                                 <Paragraph className="text-gray-600 mb-2">{job.empresa?.nombre}</Paragraph>
                                 <Tag color="blue">{job.puesto}</Tag>
                               </div>
-                              {job.salario && (
-                                <div className="text-right">
-                                  <div className="text-lg font-semibold text-green-600">
-                                    ${job.salario.toLocaleString()}
-                                  </div>
-                                </div>
-                              )}
                             </div>
                             
                             <Paragraph className="text-sm text-gray-600 mb-3">
@@ -509,7 +501,7 @@ const UserDashboard: React.FC = () => {
                               <Space>
                                 <ClockCircleOutlined className="text-gray-400" />
                                 <span className="text-sm text-gray-600">
-                                  Ends {dayjs(job.fechaFin).format('MMM DD')}
+                                  Ends {dayjs(job.fechaCierre).format('MMM DD')}
                                 </span>
                               </Space>
                               <Button 
@@ -629,18 +621,9 @@ const UserDashboard: React.FC = () => {
             </div>
             
             <div>
-              <Title level={5}>Requirements:</Title>
-              <Paragraph>{selectedJob.requisitos}</Paragraph>
+              <Title level={5}>Position:</Title>
+              <Paragraph>{selectedJob.puesto}</Paragraph>
             </div>
-            
-            {selectedJob.salario && (
-              <div>
-                <Title level={5}>Salary:</Title>
-                <Paragraph className="text-green-600 font-semibold">
-                  ${selectedJob.salario.toLocaleString()}
-                </Paragraph>
-              </div>
-            )}
             
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
               <Paragraph className="text-blue-800 mb-0">

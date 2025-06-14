@@ -28,8 +28,9 @@ import {
 import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { interviewAPI, postulacionAPI } from '../services/api';
-import { Pregunta, Postulacion, Evaluacion } from '../types/api';
+import { preguntaAPI, respuestaAPI, postulacionAPI, evaluacionAPI } from '../services/api';
+import { Pregunta, Postulacion, Evaluacion, EstadoPostulacion } from '../types/api';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 
 const { Header, Content } = Layout;
 const { Title, Paragraph } = Typography;
@@ -82,15 +83,19 @@ const Interview: React.FC = () => {
       setPostulacion(postulacionData);
 
       // Check if interview is completed and we should show results
-      if (window.location.pathname.includes('/results') || postulacionData.estado === 'COMPLETADA') {
+      if (window.location.pathname.includes('/results') || postulacionData.estado === EstadoPostulacion.COMPLETADA) {
         await loadResults(parseInt(id));
         setShowResults(true);
         return;
       }
 
       // Generate questions if not already generated
-      if (postulacionData.estado === 'PENDIENTE') {
+      if (postulacionData.estado === EstadoPostulacion.PENDIENTE) {
         await generateQuestions(postulacionData);
+      } else {
+        // Load existing questions
+        const questionsResponse = await preguntaAPI.getByPostulacion(parseInt(id));
+        setQuestions(questionsResponse.data);
       }
 
     } catch (error: any) {
@@ -107,15 +112,12 @@ const Interview: React.FC = () => {
       const questionData = {
         puesto: postulacionData.convocatoria?.puesto || 'Developer',
         dificultad: 5,
-        idConvocatoria: postulacionData.convocatoriaId,
-        idPostulacion: postulacionData.id!
+        idConvocatoria: postulacionData.convocatoria?.id || 0,
+        idPostulacion: postulacionData.id || 0
       };
 
-      const response = await interviewAPI.generateQuestions(questionData);
+      const response = await preguntaAPI.generar(questionData);
       setQuestions(response.data);
-      
-      // Update postulacion status to EN_PROCESO
-      // Note: You might need an endpoint to update postulacion status
       
     } catch (error: any) {
       console.error('Error generating questions:', error);
@@ -125,11 +127,8 @@ const Interview: React.FC = () => {
 
   const loadResults = async (postulacionId: number) => {
     try {
-      const evaluationResponse = await interviewAPI.getEvaluationByPostulacion(postulacionId);
+      const evaluationResponse = await evaluacionAPI.getByPostulacion(postulacionId);
       setEvaluations(evaluationResponse.data);
-      
-      const answersResponse = await interviewAPI.getAnswersByPostulacion(postulacionId);
-      // You can use answers data if needed for displaying questions and answers
       
     } catch (error: any) {
       console.error('Error loading results:', error);
@@ -158,7 +157,7 @@ const Interview: React.FC = () => {
     
     try {
       // Submit and evaluate the answer
-      await interviewAPI.evaluateAnswer({
+      await respuestaAPI.evaluar({
         preguntaId: questions[currentQuestion].id!,
         answer: answer.trim(),
         postulacionId: postulacion.id
@@ -195,6 +194,20 @@ const Interview: React.FC = () => {
   }
 
   if (showResults) {
+    // Prepare chart data
+    const radarData = evaluations.map((evaluation, index) => ({
+      subject: `Q${index + 1}`,
+      clarity: evaluation.claridadEstructura,
+      technical: evaluation.dominioTecnico,
+      relevance: evaluation.pertinencia,
+      fullMark: 10
+    }));
+
+    const lineData = evaluations.map((evaluation, index) => ({
+      question: `Q${index + 1}`,
+      score: evaluation.porcentajeObtenido
+    }));
+
     return (
       <Layout className="main-layout">
         <Header className="header-layout">
@@ -243,66 +256,101 @@ const Interview: React.FC = () => {
                 </div>
 
                 {evaluations.length > 0 && (
-                  <Row gutter={[24, 24]}>
-                    {evaluations.map((evaluation, index) => (
-                      <Col xs={24} lg={12} key={index}>
-                        <Card className="h-full">
-                          <div className="space-y-4">
-                            <div className="flex justify-between items-center">
-                              <Title level={4}>Question {index + 1} Results</Title>
-                              <Tag color={evaluation.porcentajeObtenido >= 80 ? 'success' : 
-                                         evaluation.porcentajeObtenido >= 60 ? 'warning' : 'error'}>
-                                {evaluation.porcentajeObtenido}%
-                              </Tag>
-                            </div>
-                            
-                            <div className="space-y-3">
-                              <div>
-                                <Paragraph className="text-sm font-medium text-gray-600 mb-1">
-                                  Clarity & Structure
-                                </Paragraph>
-                                <Progress 
-                                  percent={evaluation.claridad_estructura * 10} 
-                                  strokeColor="#52c41a"
-                                  size="small"
-                                />
-                              </div>
-                              
-                              <div>
-                                <Paragraph className="text-sm font-medium text-gray-600 mb-1">
-                                  Technical Knowledge
-                                </Paragraph>
-                                <Progress 
-                                  percent={evaluation.dominio_tecnico * 10} 
-                                  strokeColor="#1890ff"
-                                  size="small"
-                                />
-                              </div>
-                              
-                              <div>
-                                <Paragraph className="text-sm font-medium text-gray-600 mb-1">
-                                  Relevance
-                                </Paragraph>
-                                <Progress 
-                                  percent={evaluation.pertinencia * 10} 
-                                  strokeColor="#722ed1"
-                                  size="small"
-                                />
-                              </div>
-                            </div>
-                            
-                            {evaluation.feedback && (
-                              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                                <Paragraph className="text-blue-800 text-sm mb-0">
-                                  <strong>AI Feedback:</strong> {evaluation.feedback}
-                                </Paragraph>
-                              </div>
-                            )}
-                          </div>
+                  <>
+                    {/* Performance Charts */}
+                    <Row gutter={[24, 24]} className="mb-8">
+                      <Col xs={24} lg={12}>
+                        <Card title="Performance Overview" className="h-full">
+                          <ResponsiveContainer width="100%" height={300}>
+                            <LineChart data={lineData}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="question" />
+                              <YAxis domain={[0, 100]} />
+                              <Tooltip />
+                              <Line type="monotone" dataKey="score" stroke="#6366f1" strokeWidth={2} />
+                            </LineChart>
+                          </ResponsiveContainer>
                         </Card>
                       </Col>
-                    ))}
-                  </Row>
+                      <Col xs={24} lg={12}>
+                        <Card title="Skills Assessment" className="h-full">
+                          <ResponsiveContainer width="100%" height={300}>
+                            <RadarChart data={radarData}>
+                              <PolarGrid />
+                              <PolarAngleAxis dataKey="subject" />
+                              <PolarRadiusAxis domain={[0, 10]} />
+                              <Radar name="Clarity" dataKey="clarity" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+                              <Radar name="Technical" dataKey="technical" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.6} />
+                              <Radar name="Relevance" dataKey="relevance" stroke="#ffc658" fill="#ffc658" fillOpacity={0.6} />
+                              <Tooltip />
+                            </RadarChart>
+                          </ResponsiveContainer>
+                        </Card>
+                      </Col>
+                    </Row>
+
+                    {/* Detailed Results */}
+                    <Row gutter={[24, 24]}>
+                      {evaluations.map((evaluation, index) => (
+                        <Col xs={24} lg={12} key={index}>
+                          <Card className="h-full">
+                            <div className="space-y-4">
+                              <div className="flex justify-between items-center">
+                                <Title level={4}>Question {index + 1} Results</Title>
+                                <Tag color={evaluation.porcentajeObtenido >= 80 ? 'success' : 
+                                           evaluation.porcentajeObtenido >= 60 ? 'warning' : 'error'}>
+                                  {evaluation.porcentajeObtenido}%
+                                </Tag>
+                              </div>
+                              
+                              <div className="space-y-3">
+                                <div>
+                                  <Paragraph className="text-sm font-medium text-gray-600 mb-1">
+                                    Clarity & Structure
+                                  </Paragraph>
+                                  <Progress 
+                                    percent={evaluation.claridadEstructura * 10} 
+                                    strokeColor="#52c41a"
+                                    size="small"
+                                  />
+                                </div>
+                                
+                                <div>
+                                  <Paragraph className="text-sm font-medium text-gray-600 mb-1">
+                                    Technical Knowledge
+                                  </Paragraph>
+                                  <Progress 
+                                    percent={evaluation.dominioTecnico * 10} 
+                                    strokeColor="#1890ff"
+                                    size="small"
+                                  />
+                                </div>
+                                
+                                <div>
+                                  <Paragraph className="text-sm font-medium text-gray-600 mb-1">
+                                    Relevance
+                                  </Paragraph>
+                                  <Progress 
+                                    percent={evaluation.pertinencia * 10} 
+                                    strokeColor="#722ed1"
+                                    size="small"
+                                  />
+                                </div>
+                              </div>
+                              
+                              {evaluation.feedback && (
+                                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                  <Paragraph className="text-blue-800 text-sm mb-0">
+                                    <strong>AI Feedback:</strong> {evaluation.feedback}
+                                  </Paragraph>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        </Col>
+                      ))}
+                    </Row>
+                  </>
                 )}
 
                 <div className="text-center mt-8">
@@ -334,7 +382,7 @@ const Interview: React.FC = () => {
         <Card className="text-center">
           <RobotOutlined className="text-6xl text-indigo-600 mb-4" />
           <Title level={3}>Generating Interview Questions...</Title>
-          <Paragraph>MiraiBot is preparing personalized questions for you.</Paragraph>
+          <Paragraph>Mirai is preparing personalized questions for you.</Paragraph>
           <Spin size="large" />
         </Card>
       </div>
@@ -440,7 +488,7 @@ const Interview: React.FC = () => {
                 <div className="flex-1">
                   <div className="ai-message">
                     <Title level={5} className="mb-3 text-indigo-800">
-                      MiraiBot asks:
+                      Mirai asks:
                     </Title>
                     <Paragraph className="text-lg mb-0 text-gray-800 leading-relaxed">
                       {currentQ?.texto}
@@ -448,7 +496,7 @@ const Interview: React.FC = () => {
                   </div>
                   <div className="mt-3 flex items-center space-x-2 text-sm text-gray-500">
                     <RobotOutlined className="text-indigo-500" />
-                    <span>MiraiBot is analyzing your response in real-time...</span>
+                    <span>Mirai is analyzing your response in real-time...</span>
                   </div>
                 </div>
               </div>
@@ -520,7 +568,7 @@ const Interview: React.FC = () => {
                   <div className="flex items-center space-x-3 mb-4">
                     <RobotOutlined className="text-indigo-600 text-xl" />
                     <Title level={5} className="mb-0 text-indigo-800">
-                      MiraiBot Tips
+                      Mirai Tips
                     </Title>
                   </div>
                   <Paragraph className="text-indigo-700 mb-0">

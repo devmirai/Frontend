@@ -8,6 +8,7 @@ import Login from './components/Login';
 import CompanyDashboard from './components/CompanyDashboard';
 import UserDashboard from './components/UserDashboard';
 import Interview from './components/Interview';
+import { Rol } from './types/api';
 import './App.css';
 
 const theme = {
@@ -42,7 +43,7 @@ const DashboardRouter: React.FC = () => {
   if (!user) return null;
   
   // Redirect to appropriate dashboard based on user role
-  if (user.role === 'EMPRESA') {
+  if (user.role === Rol.EMPRESA) {
     return <Navigate to="/empresa/dashboard" replace />;
   } else {
     return <Navigate to="/usuario/dashboard" replace />;
@@ -74,7 +75,7 @@ function App() {
               <Route 
                 path="/empresa/dashboard" 
                 element={
-                  <ProtectedRoute requiredRole="EMPRESA">
+                  <ProtectedRoute requiredRole={Rol.EMPRESA}>
                     <CompanyDashboard />
                   </ProtectedRoute>
                 } 
@@ -82,7 +83,7 @@ function App() {
               <Route 
                 path="/empresa/convocatoria/:id" 
                 element={
-                  <ProtectedRoute requiredRole="EMPRESA">
+                  <ProtectedRoute requiredRole={Rol.EMPRESA}>
                     <div>Convocatoria Details (TODO)</div>
                   </ProtectedRoute>
                 } 
@@ -90,7 +91,7 @@ function App() {
               <Route 
                 path="/empresa/convocatoria/:id/candidates" 
                 element={
-                  <ProtectedRoute requiredRole="EMPRESA">
+                  <ProtectedRoute requiredRole={Rol.EMPRESA}>
                     <div>Candidates List (TODO)</div>
                   </ProtectedRoute>
                 } 
@@ -100,7 +101,7 @@ function App() {
               <Route 
                 path="/usuario/dashboard" 
                 element={
-                  <ProtectedRoute requiredRole="USUARIO">
+                  <ProtectedRoute requiredRole={Rol.USUARIO}>
                     <UserDashboard />
                   </ProtectedRoute>
                 } 
@@ -108,7 +109,7 @@ function App() {
               <Route 
                 path="/usuario/interview/:id" 
                 element={
-                  <ProtectedRoute requiredRole="USUARIO">
+                  <ProtectedRoute requiredRole={Rol.USUARIO}>
                     <Interview />
                   </ProtectedRoute>
                 } 
@@ -116,7 +117,7 @@ function App() {
               <Route 
                 path="/usuario/interview/:id/results" 
                 element={
-                  <ProtectedRoute requiredRole="USUARIO">
+                  <ProtectedRoute requiredRole={Rol.USUARIO}>
                     <Interview />
                   </ProtectedRoute>
                 } 

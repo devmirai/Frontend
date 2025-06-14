@@ -46,8 +46,8 @@ import {
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { convocatoriaAPI, convocatoriaFromBackend } from '../services/api';
-import { Convocatoria, Postulacion } from '../types/api';
+import { convocatoriaAPI, postulacionAPI } from '../services/api';
+import { Convocatoria, Postulacion, Rol } from '../types/api';
 import dayjs from 'dayjs';
 
 const { Header, Sider, Content } = Layout;
@@ -100,8 +100,17 @@ const CompanyDashboard: React.FC = () => {
       
       // Load company's convocatorias
       const convocatoriasResponse = await convocatoriaAPI.getByEmpresa(user.id);
-      const convocatoriasData = convocatoriasResponse.data.map(convocatoriaFromBackend);
-      setConvocatorias(convocatoriasData);
+      setConvocatorias(convocatoriasResponse.data);
+
+      // Load all postulaciones for company's convocatorias
+      const allPostulaciones: Postulacion[] = [];
+      for (const convocatoria of convocatoriasResponse.data) {
+        if (convocatoria.id) {
+          const postulacionesResponse = await postulacionAPI.getByConvocatoria(convocatoria.id);
+          allPostulaciones.push(...postulacionesResponse.data);
+        }
+      }
+      setPostulaciones(allPostulaciones);
     } catch (error: any) {
       console.error('Error loading dashboard data:', error);
       message.error('Error loading dashboard data');
@@ -113,7 +122,7 @@ const CompanyDashboard: React.FC = () => {
   const stats = [
     {
       title: 'Active Job Postings',
-      value: convocatorias.filter(c => c.estado === 'ACTIVA').length,
+      value: convocatorias.filter(c => c.activo).length,
       icon: <FileTextOutlined className="text-blue-600" />,
       color: 'blue',
       change: `${convocatorias.length} total`,
@@ -225,22 +234,22 @@ const CompanyDashboard: React.FC = () => {
     },
     {
       title: 'Status',
-      dataIndex: 'estado',
-      key: 'estado',
-      render: (status: string) => getStatusTag(status),
+      dataIndex: 'activo',
+      key: 'activo',
+      render: (activo: boolean) => getStatusTag(activo ? 'ACTIVA' : 'CERRADA'),
     },
     {
       title: 'Applications',
       key: 'applications',
       render: (_, record: Convocatoria) => {
-        const count = postulaciones.filter(p => p.convocatoriaId === record.id).length;
+        const count = postulaciones.filter(p => p.convocatoria?.id === record.id).length;
         return <span className="font-medium">{count}</span>;
       },
     },
     {
       title: 'End Date',
-      dataIndex: 'fechaFin',
-      key: 'fechaFin',
+      dataIndex: 'fechaCierre',
+      key: 'fechaCierre',
       render: (date: string) => (
         <span className="text-gray-600">{dayjs(date).format('MMM DD, YYYY')}</span>
       ),
@@ -260,13 +269,14 @@ const CompanyDashboard: React.FC = () => {
     setCreateLoading(true);
     try {
       const convocatoriaData = {
-        ...values,
-        fechaInicio: values.fechas[0].format('YYYY-MM-DD'),
-        fechaFin: values.fechas[1].format('YYYY-MM-DD'),
-        empresaId: user?.id,
-        estado: 'ACTIVA'
+        titulo: values.titulo,
+        descripcion: values.descripcion,
+        puesto: values.puesto,
+        activo: true,
+        fechaPublicacion: values.fechas[0].format('YYYY-MM-DD'),
+        fechaCierre: values.fechas[1].format('YYYY-MM-DD'),
+        empresa: { id: user?.id }
       };
-      delete convocatoriaData.fechas;
 
       await convocatoriaAPI.create(convocatoriaData);
       message.success('Job posting created successfully!');
@@ -295,7 +305,7 @@ const CompanyDashboard: React.FC = () => {
             <RobotOutlined />
           </div>
           {!collapsed && (
-            <span className="logo-text">MiraiBot</span>
+            <span className="logo-text">Mirai</span>
           )}
         </div>
 
@@ -315,7 +325,7 @@ const CompanyDashboard: React.FC = () => {
                 <div className="mirabot-avatar mx-auto mb-3" style={{ width: '60px', height: '60px' }}>
                   <RobotOutlined className="text-2xl text-white" />
                 </div>
-                <Title level={5} className="mb-2 text-indigo-800">MiraiBot</Title>
+                <Title level={5} className="mb-2 text-indigo-800">Mirai</Title>
                 <Paragraph className="text-indigo-600 text-sm mb-0">
                   Ready to help with interviews!
                 </Paragraph>
@@ -588,35 +598,12 @@ const CompanyDashboard: React.FC = () => {
           </Form.Item>
 
           <Form.Item
-            name="requisitos"
-            label="Requirements"
-            rules={[{ required: true, message: 'Please enter requirements' }]}
+            name="fechas"
+            label="Application Period"
+            rules={[{ required: true, message: 'Please select dates' }]}
           >
-            <Input.TextArea 
-              rows={3} 
-              placeholder="List the required skills, experience, and qualifications..."
-            />
+            <RangePicker className="w-full" />
           </Form.Item>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="salario"
-                label="Salary (Optional)"
-              >
-                <Input type="number" placeholder="50000" addonBefore="$" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="fechas"
-                label="Application Period"
-                rules={[{ required: true, message: 'Please select dates' }]}
-              >
-                <RangePicker className="w-full" />
-              </Form.Item>
-            </Col>
-          </Row>
 
           <Form.Item className="mb-0 flex justify-end">
             <Space>

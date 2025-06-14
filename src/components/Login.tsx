@@ -4,6 +4,7 @@ import { UserOutlined, LockOutlined, RobotOutlined, GoogleOutlined, ArrowLeftOut
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { Rol } from '../types/api';
 
 const { Content } = Layout;
 const { Title, Paragraph } = Typography;
@@ -110,13 +111,13 @@ const Login: React.FC = () => {
               placeholder="Select account type"
               className="h-12"
             >
-              <Option value="USUARIO">
+              <Option value={Rol.USUARIO}>
                 <Space>
                   <UserOutlined />
                   Job Seeker
                 </Space>
               </Option>
-              <Option value="EMPRESA">
+              <Option value={Rol.EMPRESA}>
                 <Space>
                   <TeamOutlined />
                   Company/Recruiter
@@ -185,7 +186,7 @@ const Login: React.FC = () => {
             {({ getFieldValue }) => {
               const role = getFieldValue('role');
               
-              if (role === 'USUARIO') {
+              if (role === Rol.USUARIO) {
                 return (
                   <>
                     <Row gutter={16}>
@@ -255,7 +256,7 @@ const Login: React.FC = () => {
                     </Form.Item>
                   </>
                 );
-              } else if (role === 'EMPRESA') {
+              } else if (role === Rol.EMPRESA) {
                 return (
                   <>
                     <Form.Item
@@ -349,7 +350,7 @@ const Login: React.FC = () => {
                     <RobotOutlined />
                   </div>
                   <Title level={1} className="logo-text mb-0">
-                    MiraiBot
+                    Mirai
                   </Title>
                 </div>
                 
@@ -380,7 +381,7 @@ const Login: React.FC = () => {
                       <div className="flex items-center space-x-2">
                         <RobotOutlined className="text-indigo-600" />
                         <span className="text-sm font-medium text-gray-700">
-                          MiraiBot: Ready to assist!
+                          Mirai: Ready to assist!
                         </span>
                       </div>
                     </div>
@@ -417,7 +418,7 @@ const Login: React.FC = () => {
                       <Paragraph className="text-gray-600 text-base">
                         {activeTab === 'login' 
                           ? 'Enter your credentials to access the platform'
-                          : 'Join thousands of users already using MiraiBot'
+                          : 'Join thousands of users already using Mirai'
                         }
                       </Paragraph>
                     </div>

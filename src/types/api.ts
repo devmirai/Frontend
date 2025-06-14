@@ -1,83 +1,119 @@
-// User Types
+// Enums
+export enum Rol {
+  ADMIN = 'ADMIN',
+  EMPRESA = 'EMPRESA',
+  USUARIO = 'USUARIO'
+}
+
+export enum EstadoPostulacion {
+  PENDIENTE = 'PENDIENTE',
+  EN_PROCESO = 'EN_PROCESO',
+  COMPLETADA = 'COMPLETADA',
+  RECHAZADA = 'RECHAZADA'
+}
+
+// Base Entity Types
 export interface Usuario {
   id?: number;
   nombre: string;
   apellidoPaterno: string;
   apellidoMaterno: string;
   email: string;
-  password: string;
+  password?: string;
   nacimiento: string;
   telefono: number;
-  rol: 'USUARIO';
+  rol: Rol;
 }
 
 export interface Empresa {
   id?: number;
   nombre: string;
   email: string;
-  password: string;
+  password?: string;
   telefono: string;
   direccion: string;
   descripcion: string;
-  rol: 'EMPRESA';
+  rol: Rol;
 }
 
-// Convocatoria Types
 export interface Convocatoria {
   id?: number;
   titulo: string;
   descripcion: string;
   puesto: string;
-  requisitos: string;
-  salario?: number;
-  fechaInicio: string;
-  fechaFin: string;
-  estado: 'ACTIVA' | 'CERRADA' | 'PAUSADA';
-  empresaId: number;
+  activo: boolean;
+  fechaPublicacion: string;
+  fechaCierre: string;
   empresa?: Empresa;
 }
 
-// Postulacion Types
 export interface Postulacion {
   id?: number;
   fechaPostulacion: string;
-  estado: 'PENDIENTE' | 'EN_PROCESO' | 'COMPLETADA' | 'RECHAZADA';
-  usuarioId: number;
-  convocatoriaId: number;
+  estado: EstadoPostulacion;
   usuario?: Usuario;
   convocatoria?: Convocatoria;
 }
 
-// Interview Types
 export interface Pregunta {
   id?: number;
   texto: string;
   tipo: string;
   dificultad: number;
-  postulacionId: number;
-  convocatoriaId: number;
+  postulacion?: Postulacion;
+  convocatoria?: Convocatoria;
 }
 
 export interface Respuesta {
   id?: number;
   texto: string;
   fechaRespuesta: string;
-  preguntaId: number;
-  postulacionId: number;
   pregunta?: Pregunta;
+  postulacion?: Postulacion;
 }
 
 export interface Evaluacion {
   id?: number;
-  claridad_estructura: number;
-  dominio_tecnico: number;
+  claridadEstructura: number;
+  dominioTecnico: number;
   pertinencia: number;
   puntajeTotal: number;
   porcentajeObtenido: number;
   feedback: string;
-  respuestaId: number;
-  postulacionId: number;
   respuesta?: Respuesta;
+  postulacion?: Postulacion;
+}
+
+// DTO Types
+export interface PreguntaRequest {
+  puesto: string;
+  dificultad: number;
+  idConvocatoria: number;
+  idPostulacion: number;
+}
+
+export interface PreguntaResponse {
+  id: number;
+  texto: string;
+  tipo: string;
+  dificultad: number;
+}
+
+export interface EvaluacionRequest {
+  preguntaId: number;
+  answer: string;
+  postulacionId: number;
+}
+
+export interface EvaluacionResponse {
+  id: number;
+  claridadEstructura: number;
+  dominioTecnico: number;
+  pertinencia: number;
+  puntajeTotal: number;
+  porcentajeObtenido: number;
+  feedback: string;
+  fechaEvaluacion: string;
 }
 
 // API Response Types
